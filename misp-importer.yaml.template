@@ -21,6 +21,8 @@ data:
         var.url: ${MISP_URL}
         # interval at which data from misp shoud be refreshed
         #var.interval: 60m
+        # use a pipeline to route events into a dedicated index
+        # default is events go to filebeat-* indexes
         pipeline: misp
 
 
@@ -51,6 +53,8 @@ spec:
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
+      # workaround to kill task after completion.
+      # filebeat --once option doesn't seem to work on httpjson inputs!
       activeDeadlineSeconds: 600
       template:
         spec:

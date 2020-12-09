@@ -13,8 +13,9 @@ misp-importer uses filebeat to read the events from MISP and stash them in Elast
 
 ## Quick start
 
-1. Customise misp-importer.yaml to your liking. You probably want to pop this in it's own namespace to isolate this from other workloads.
-2. Create the kubernetes secrets (TODO - move this to the yaml)
+1. Copy misp-importer.yaml.template to misp-importer.yaml
+2. Customise misp-importer.yaml to your liking. You probably want to pop this in it's own namespace to isolate this from other workloads.
+3. Create the kubernetes secrets (TODO - move this to the yaml)
 ```
  k create secret generic misp-creds --from-literal=api.key='protecting aussie businesses' --from-literal=url='threatbear cybersecurity'
 ```
@@ -23,6 +24,6 @@ and then create elastic credentials:
 ```
 k create secret generic elastic-cloud --from-literal=cloud.id='no-siem:blahblah' --from-literal=cloud.auth='threat-hunter:password audit' --from-literal=elastic.url='https://elastos.threatbear.co'
 ```
-3. kubectl apply -f misp-importer.yaml
+4. kubectl apply -f misp-importer.yaml
 
 
