@@ -1,0 +1,137 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  # change to dedicated namespace
+  namespace: default
+  labels:
+    k8s-app: misp-importer
+data:
+  filebeat.yml: |-
+    filebeat.modules:
+    - module: misp
+      threat:
+        enabled: true
+        # API key to access MISP
+        var.api_key: ${MISP_API_KEY}
+        # Array object in MISP response
+        var.json_objects_array: "response.Attribute"
+        # URL of the MISP REST API
+        var.url: ${MISP_URL}
+        # interval at which data from misp shoud be refreshed
+        #var.interval: 60m
+        pipeline: misp
+
+
+    setup.dashboards.enabled: false
+    setup.template.overwrite: true
+    setup.template.settings:
+      index.number_of_shards: 1
+      index.number_of_replicas: 0
+
+    cloud.id: ${ELASTIC_CLOUD_ID}
+    cloud.auth: ${ELASTIC_CLOUD_AUTH}
+
+    logging.metrics.enabled: false
+
+    output.elasticsearch:
+      hosts: ['${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
+      username: ${ELASTICSEARCH_USERNAME}
+      password: ${ELASTICSEARCH_PASSWORD}
+---
+apiVersion: batch/v1beta1 # for versions before 1.9.0 use apps/v1beta2
+kind: CronJob
+metadata:
+  name: misp-importer
+  # change to dedicated namespace
+  namespace: default
+spec:
+  schedule: "15 05 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: "Never"
+          containers:
+          - name: misp-importer
+            image: docker.elastic.co/beats/filebeat:7.9.2
+            args: [
+              "-c", "/etc/filebeat.yml",
+              "-e",
+            ]
+            env:
+            - name: ELASTICSEARCH_HOST
+              value: elasticsearch
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: ELASTICSEARCH_USERNAME
+              value: elastic
+            - name: ELASTICSEARCH_PASSWORD
+              value: changeme
+            - name: ELASTIC_CLOUD_ID
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-cloud
+                  key: cloud.id
+            - name: ELASTIC_CLOUD_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-cloud
+                  key: cloud.auth
+            - name: MISP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: misp-creds
+                  key: api.key
+            - name: MISP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: misp-creds
+                  key: url
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            securityContext:
+              runAsUser: 0
+            volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+          initContainers:
+            - name: index-remover
+              image: centos:centos7
+              command: ["/bin/sh", "-c", "curl -X DELETE https://$(ELASTIC_CLOUD_AUTH)@$(ELASTIC_URL)"]
+              env:
+              - name: ELASTIC_CLOUD_AUTH
+                valueFrom:
+                  secretKeyRef:
+                    name: elastic-cloud
+                    key: cloud.auth
+              - name: ELASTIC_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: elastic-cloud
+                    key: elastic.url
+          volumes:
+          - name: config
+            configMap:
+              defaultMode: 0600
+              name: filebeat-config
+          - name: varlog
+            hostPath:
+              path: /var/log
+          # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
+          - name: data
+            hostPath:
+              path: /var/lib/filebeat-misp-data
+              type: DirectoryOrCreate
