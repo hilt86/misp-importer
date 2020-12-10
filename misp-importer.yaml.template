@@ -2,9 +2,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: filebeat-config
-  # change to dedicated namespace
-  namespace: default
+  name: misp-importer-config
+  namespace: misp-importer
   labels:
     k8s-app: misp-importer
 data:
@@ -45,7 +44,7 @@ kind: CronJob
 metadata:
   name: misp-importer
   # change to dedicated namespace
-  namespace: default
+  namespace: misp-importer
 spec:
   schedule: "05 * * * *"
   concurrencyPolicy: Forbid
@@ -142,7 +141,7 @@ spec:
           - name: config
             configMap:
               defaultMode: 0600
-              name: filebeat-config
+              name: misp-importer-config
           - name: varlog
             hostPath:
               path: /var/log
