@@ -21,7 +21,7 @@ data:
         # interval at which data from misp shoud be refreshed
         #var.interval: 60m
 
-
+    setup.ilm.enabled: false
     setup.dashboards.enabled: false
     #setup.template.overwrite: true
     setup.template.name: "filebeat"
