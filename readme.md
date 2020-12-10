@@ -14,7 +14,7 @@ misp-importer uses filebeat to read the events from MISP and stash them in Elast
 ## Quick start
 
 1. Copy misp-importer.yaml.template to misp-importer.yaml
-2. Customise misp-importer.yaml to your liking. You probably want to pop this in it's own namespace to isolate this from other workloads.
+2. Customise misp-importer.yaml to your liking. You probably want to pop this in it's own namespace to isolate this from other workloads. Make sure to set the MISP_INDEX variable!
 3. Create the kubernetes secrets:
 ```
  k create secret generic misp-importer-misp --from-literal=apikey='protecting aussie businesses' --from-literal=url='threatbear cybersecurity'
@@ -26,4 +26,6 @@ k create secret generic misp-importer-elasticsearch --from-literal=username='bla
 ```
 4. kubectl apply -f misp-importer.yaml
 
+## TODO
 
+1. MISP_INDEX is partially hardcoded. Change this so filebeat versions don't wreck this!

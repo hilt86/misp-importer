@@ -114,7 +114,7 @@ spec:
           initContainers:
             - name: index-remover
               image: centos:centos7
-              command: ["/bin/sh", "-c", "curl -X DELETE https://$(ELASTICSEARCH_USERNAME):$(ELASTICSEARCH_PASSWORD)@$(ELASTICSEARCH_HOST):$(ELASTICSEARCH_PORT)/filebeat-7.9.2-misp*?pretty"]
+              command: ["/bin/sh", "-c", "curl -X DELETE https://$(ELASTICSEARCH_USERNAME):$(ELASTICSEARCH_PASSWORD)@$(ELASTICSEARCH_HOST):$(ELASTICSEARCH_PORT)/$(MISP_INDEX)?pretty"]
               env:
               - name: ELASTICSEARCH_HOST
                 valueFrom:
@@ -136,6 +136,8 @@ spec:
                   secretKeyRef:
                     name: misp-importer-elasticsearch
                     key: password
+              - name: MISP_INDEX
+                value: "filebeat-7.9.2-misp*"
           volumes:
           - name: config
             configMap:
