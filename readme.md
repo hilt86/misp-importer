@@ -25,6 +25,9 @@ and then create elastic credentials:
 k create secret generic misp-importer-elasticsearch --from-literal=username='blahblah' --from-literal=password='audit' --from-literal=host='elastos.threatbear.co' --from-literal=port='9243'
 ```
 4. kubectl apply -f misp-importer.yaml
+5. Setup a rule in Elastic SIEM like below
+
+![Detection Rule](detection-rule-example.png)
 
 ## TODO
 
