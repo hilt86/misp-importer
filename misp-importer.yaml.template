@@ -21,26 +21,24 @@ data:
         var.url: ${MISP_URL}
         # interval at which data from misp shoud be refreshed
         #var.interval: 60m
-        # use a pipeline to route events into a dedicated index
-        # default is events go to filebeat-* indexes
-        pipeline: misp
 
 
     setup.dashboards.enabled: false
-    setup.template.overwrite: true
+    #setup.template.overwrite: true
+    setup.template.name: "filebeat"
+    setup.template.pattern: "filebeat-*"
     setup.template.settings:
       index.number_of_shards: 1
       index.number_of_replicas: 0
-
-    cloud.id: ${ELASTIC_CLOUD_ID}
-    cloud.auth: ${ELASTIC_CLOUD_AUTH}
 
     logging.metrics.enabled: false
 
     output.elasticsearch:
       hosts: ['${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
+      protocol: "https"
       username: ${ELASTICSEARCH_USERNAME}
       password: ${ELASTICSEARCH_PASSWORD}
+      index: "filebeat-%{[agent.version]}-misp-%{+yyyy.MM.dd}"
 ---
 apiVersion: batch/v1beta1 # for versions before 1.9.0 use apps/v1beta2
 kind: CronJob
@@ -49,7 +47,7 @@ metadata:
   # change to dedicated namespace
   namespace: default
 spec:
-  schedule: "15 05 * * *"
+  schedule: "05 * * * *"
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -68,32 +66,34 @@ spec:
             ]
             env:
             - name: ELASTICSEARCH_HOST
-              value: elasticsearch
+              valueFrom:
+                secretKeyRef:
+                  name: misp-importer-elasticsearch
+                  key: host
             - name: ELASTICSEARCH_PORT
-              value: "9200"
+              valueFrom:
+                secretKeyRef:
+                  name: misp-importer-elasticsearch
+                  key: port
             - name: ELASTICSEARCH_USERNAME
-              value: elastic
+              valueFrom:
+                secretKeyRef:
+                  name: misp-importer-elasticsearch
+                  key: username
             - name: ELASTICSEARCH_PASSWORD
-              value: changeme
-            - name: ELASTIC_CLOUD_ID
               valueFrom:
                 secretKeyRef:
-                  name: elastic-cloud
-                  key: cloud.id
-            - name: ELASTIC_CLOUD_AUTH
-              valueFrom:
-                secretKeyRef:
-                  name: elastic-cloud
-                  key: cloud.auth
+                  name: misp-importer-elasticsearch
+                  key: password
             - name: MISP_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: misp-creds
-                  key: api.key
+                  name: misp-importer-misp
+                  key: apikey
             - name: MISP_URL
               valueFrom:
                 secretKeyRef:
-                  name: misp-creds
+                  name: misp-importer-misp
                   key: url
             - name: NODE_NAME
               valueFrom:
@@ -114,18 +114,28 @@ spec:
           initContainers:
             - name: index-remover
               image: centos:centos7
-              command: ["/bin/sh", "-c", "curl -X DELETE https://$(ELASTIC_CLOUD_AUTH)@$(ELASTIC_URL)"]
+              command: ["/bin/sh", "-c", "curl -X DELETE https://$(ELASTICSEARCH_USERNAME):$(ELASTICSEARCH_PASSWORD)@$(ELASTICSEARCH_HOST):$(ELASTICSEARCH_PORT)/filebeat-7.9.2-misp*?pretty"]
               env:
-              - name: ELASTIC_CLOUD_AUTH
+              - name: ELASTICSEARCH_HOST
                 valueFrom:
                   secretKeyRef:
-                    name: elastic-cloud
-                    key: cloud.auth
-              - name: ELASTIC_URL
+                    name: misp-importer-elasticsearch
+                    key: host
+              - name: ELASTICSEARCH_PORT
                 valueFrom:
                   secretKeyRef:
-                    name: elastic-cloud
-                    key: elastic.url
+                    name: misp-importer-elasticsearch
+                    key: port
+              - name: ELASTICSEARCH_USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    name: misp-importer-elasticsearch
+                    key: username
+              - name: ELASTICSEARCH_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: misp-importer-elasticsearch
+                    key: password
           volumes:
           - name: config
             configMap:

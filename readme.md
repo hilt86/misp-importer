@@ -8,21 +8,21 @@ If used with Elastic stack 7.10 you can then use the TI matching capability to m
 
 misp-importer uses filebeat to read the events from MISP and stash them in Elasticsearch. It is designed to run as a kubernetes cronJob and by default it will run once a day and: 
 
-1. delete the index defined in ELASTIC_URL! You have been warned!
-2. Import the events from MISP into Elasticsearch. I use an ingest pipeline to route events into an index called 'misp-YYYY'
+1. delete the misp index, i.e: filebeat-ver-misp-date! You have been warned!
+2. Import the events from MISP into Elasticsearch.
 
 ## Quick start
 
 1. Copy misp-importer.yaml.template to misp-importer.yaml
 2. Customise misp-importer.yaml to your liking. You probably want to pop this in it's own namespace to isolate this from other workloads.
-3. Create the kubernetes secrets (TODO - move this to the yaml)
+3. Create the kubernetes secrets:
 ```
- k create secret generic misp-creds --from-literal=api.key='protecting aussie businesses' --from-literal=url='threatbear cybersecurity'
+ k create secret generic misp-importer-misp --from-literal=apikey='protecting aussie businesses' --from-literal=url='threatbear cybersecurity'
 ```
 and then create elastic credentials:
 
 ```
-k create secret generic elastic-cloud --from-literal=cloud.id='no-siem:blahblah' --from-literal=cloud.auth='threat-hunter:password audit' --from-literal=elastic.url='https://elastos.threatbear.co'
+k create secret generic misp-importer-elasticsearch --from-literal=username='blahblah' --from-literal=password='audit' --from-literal=host='elastos.threatbear.co' --from-literal=port='9243'
 ```
 4. kubectl apply -f misp-importer.yaml
 
